@@ -27,6 +27,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -717,7 +718,7 @@ func (listener *CarbonserverListener) detailsHandler(wr http.ResponseWriter, req
 
 	accessLogger := TraceContextToZap(ctx, listener.accessLogger.With(
 		zap.String("handler", "details"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.String("format", format),
 	))
@@ -806,7 +807,7 @@ func (listener *CarbonserverListener) listHandler(wr http.ResponseWriter, req *h
 
 	accessLogger := TraceContextToZap(ctx, listener.accessLogger.With(
 		zap.String("handler", "list"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.String("format", format),
 	))
@@ -888,7 +889,7 @@ func (listener *CarbonserverListener) findHandler(wr http.ResponseWriter, req *h
 
 	logger := TraceContextToZap(ctx, listener.logger.With(
 		zap.String("handler", "find"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.String("query", query),
 		zap.String("format", format),
@@ -896,7 +897,7 @@ func (listener *CarbonserverListener) findHandler(wr http.ResponseWriter, req *h
 
 	accessLogger := TraceContextToZap(ctx, listener.accessLogger.With(
 		zap.String("handler", "find"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.String("query", query),
 		zap.String("format", format),
@@ -1091,7 +1092,7 @@ func (listener *CarbonserverListener) renderHandler(wr http.ResponseWriter, req 
 
 	logger := TraceContextToZap(ctx, listener.accessLogger.With(
 		zap.String("handler", "render"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.Strings("targets", targets),
 		zap.String("from", from),
@@ -1101,7 +1102,7 @@ func (listener *CarbonserverListener) renderHandler(wr http.ResponseWriter, req 
 
 	accessLogger := TraceContextToZap(ctx, listener.accessLogger.With(
 		zap.String("handler", "render"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.Strings("targets", targets),
 		zap.String("from", from),
@@ -1496,7 +1497,7 @@ func (listener *CarbonserverListener) infoHandler(wr http.ResponseWriter, req *h
 
 	accessLogger := TraceContextToZap(ctx, listener.accessLogger.With(
 		zap.String("handler", "info"),
-		zap.String("url", req.URL.RequestURI()),
+		zap.String("url", decodeURL(req.URL.RequestURI())),
 		zap.String("peer", req.RemoteAddr),
 		zap.String("target", metric),
 		zap.String("format", format),
@@ -1888,7 +1889,7 @@ func (listener *CarbonserverListener) bucketRequestTimes(req *http.Request, t ti
 		// Too big? Increment overflow bucket and log
 		atomic.AddUint64(&listener.timeBuckets[listener.buckets], 1)
 		listener.logger.Info("slow request",
-			zap.String("url", req.URL.RequestURI()),
+			zap.String("url", decodeURL(req.URL.RequestURI())),
 			zap.String("peer", req.RemoteAddr),
 		)
 	}
@@ -1925,4 +1926,12 @@ func extractTrigrams(query string) []trigram.T {
 	}
 
 	return trigrams
+}
+
+func decodeURL(query string) string {
+	url, err := url.QueryUnescape(query)
+	if err == nil {
+		return url
+	}
+	return query
 }
